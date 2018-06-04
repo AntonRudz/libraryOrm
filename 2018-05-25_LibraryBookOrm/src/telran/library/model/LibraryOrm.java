@@ -121,7 +121,7 @@ public class LibraryOrm implements ILibrary {
 			returnRecord.setDelayDays(timeInUse - book.getPickPeriod());
 		records.save(returnRecord);
 		book.setAmount(amount + 1);
-		books.save(book);
+		//books.save(book);
 		return LibraryReturnCode.OK;
 	}
 
