@@ -2,7 +2,6 @@ package telran.library.entities;
 import java.time.LocalDate;
 
 import javax.persistence.*;
-import javax.validation.groups.Default;
 
 @Table(name="bookrecords")
 @Entity

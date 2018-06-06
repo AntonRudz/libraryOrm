@@ -3,9 +3,9 @@ package telran.library.model;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -64,6 +64,7 @@ public class LibraryOrm implements ILibrary {
 	}
 
 	@Override
+	@Transactional
 	public LibraryReturnCode pickBook(int readerId, long isbn, String pickDate) {
 		Reader reader = readers.findById(readerId).orElse(null);
 		if (reader == null)
@@ -88,12 +89,13 @@ public class LibraryOrm implements ILibrary {
 		records.save(new Record(pick, reader, book));
 
 		book.setAmount(amount - 1);
-		books.save(book);
+		// books.save(book);
 
 		return LibraryReturnCode.OK;
 	}
 
 	@Override
+	@Transactional
 	public LibraryReturnCode addReader(ReaderDto reader) {
 		if (readers.existsById(reader.id))
 			return LibraryReturnCode.READER_ALREADY_EXISTS;
@@ -102,6 +104,7 @@ public class LibraryOrm implements ILibrary {
 	}
 
 	@Override
+	@Transactional
 	public LibraryReturnCode returnBook(ReturnBookData returnBook) {
 		Record returnRecord = records.findByReaderIdAndBookIsbnAndReturnDateNull(returnBook.readerId,
 				returnBook.bookIsbn);
@@ -119,22 +122,23 @@ public class LibraryOrm implements ILibrary {
 		int timeInUse = (int) ChronoUnit.DAYS.between(returnRecord.getPickDate(), returnDate);
 		if (timeInUse > book.getPickPeriod())
 			returnRecord.setDelayDays(timeInUse - book.getPickPeriod());
-		records.save(returnRecord);
+		// records.save(returnRecord);
 		book.setAmount(amount + 1);
-		//books.save(book);
+		// books.save(book);
 		return LibraryReturnCode.OK;
 	}
 
 	@Override
+	@Transactional
 	public List<AuthorDto> getBookAuthors(long isbn) {
 		if (!books.existsById(isbn))
 			return null;
-		return books.findById(isbn).get().getAuthors()
-				.stream().map(Author::getAuthorDto).collect(Collectors.toList());
+		return books.findById(isbn).get().getAuthors().stream().map(Author::getAuthorDto).collect(Collectors.toList());
 
 	}
 
 	@Override
+	@Transactional
 	public List<BookDto> getAuthorBooks(String authorName) {
 		if (!authors.existsById(authorName))
 			return null;
@@ -143,10 +147,46 @@ public class LibraryOrm implements ILibrary {
 	}
 
 	@Override
+	@Transactional
 	public List<ReaderDto> getReadersDelayingBooks() {
-		return records.findAll().stream().filter(r -> r.getDelayDays() > 0).map(Record::getReader)
-				.map(Reader::getReaderDto).collect(Collectors.toList());
+		LocalDate current=LocalDate.now();
+		//Retrieving books that have been picked and not returned
+		Stream <Book> booksPicked=records
+			.findByReturnDateNull()
+			.map(Record::getBook).distinct();
+		Stream <Reader> readersDelaying=
+				booksPicked.flatMap(b->records
+						.findByBookIsbnAndReturnDateNullAndPickDateBefore
+				(b.getIsbn(),
+				current.minusDays(b.getPickPeriod())))
+				.map(Record::getReader).distinct();
+		return toListReaderDto(readersDelaying);
+	}
 
+	private List<ReaderDto> toListReaderDto(Stream <Reader> readers) {
+		return readers.map(r->r.getReaderDto())
+				.collect(Collectors.toList());
+	}
+
+
+
+	@Override
+	@Transactional
+	public List<BookDto> getMostPopularBooks(int yearFrom, int yearTo) {
+		Long maxCount = records.getMaxCountBooks(yearFrom, yearTo);
+		List<BookDto> popularBooks = records.getBookIsbnPopular(yearFrom, yearTo, maxCount).stream()
+				.map(i -> books.findById(i).get()).map(b -> b.getBookDto()).collect(Collectors.toList());
+
+		return popularBooks;
+	}
+
+	@Override
+	public List<ReaderDto> getMostActiveReaders() {
+		Long maxCount=records.getMaxCountReaders();
+		List<ReaderDto> activReaders=records.getActiveReadersId(maxCount)
+				.stream().map(i->readers.findById(i).get())
+				.map(r->r.getReaderDto()).collect(Collectors.toList());
+		return activReaders;
 	}
 
 }

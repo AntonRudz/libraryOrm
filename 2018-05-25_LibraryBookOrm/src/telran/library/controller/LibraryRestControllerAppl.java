@@ -28,11 +28,7 @@ LibraryReturnCode addBook(@RequestBody BookDto book) {
 LibraryReturnCode addAuthor(@RequestBody AuthorDto author) {
 	return library.addAuthor(author);
 }
-	public static void main(String[] args) {
-		SpringApplication.run
-		(LibraryRestControllerAppl.class, args);
-
-	}
+	
 @PostMapping(value=LibraryApiConstants.ADD_READER)
 LibraryReturnCode addReader(@RequestBody ReaderDto reader) {
 	return library.addReader(reader);
@@ -57,5 +53,18 @@ List<BookDto> getAuthorBooks(@RequestParam(name=LibraryApiConstants.AUTHOR_NAME)
 List<ReaderDto> getReadersDelaingBooks(){
 	return library.getReadersDelayingBooks();
 }
+@GetMapping(value=LibraryApiConstants.GET_MOST_POPULAR_BOOKS)
+List<BookDto> getMostPopularBooks(@RequestParam(name=LibraryApiConstants.YEAR_FROM)int yearFrom
+		,@RequestParam(name=LibraryApiConstants.YEAR_TO)int yearTo){
+	return library.getMostPopularBooks(yearFrom, yearTo);
+}
+@GetMapping(value=LibraryApiConstants.GET_MOST_ACTIVE_READERS)
+List<ReaderDto> getMostActiveReaders(){
+	return library.getMostActiveReaders();
+}
+public static void main(String[] args) {
+	SpringApplication.run
+	(LibraryRestControllerAppl.class, args);
 
+}
 }
